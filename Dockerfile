@@ -1,23 +1,22 @@
-#!BuildTag: kerberos
-#
-# podman pull registry.opensuse.org/home/RobinR1/containers/kerberos:latest
-#
-FROM opensuse/tumbleweed
-MAINTAINER Robin Roevens <robin.roevens@disroot.org>
+FROM almalinux:9-minimal
 
-RUN zypper ref && \
-    # Work around https://github.com/openSUSE/obs-build/issues/487 \
-    zypper install -y openSUSE-release-appliance-docker && \
-    zypper -n in krb5-client krb5-server krb5-plugin-kdb-ldap openldap2-client cyrus-sasl-gssapi && \
-    zypper clean -a 
+LABEL maintainer="Aelieth <shaiaelieth@gmail.com>"
+LABEL description="Custom Kerberos container for LLDAP and Keycloak integration"
 
-COPY [ "start.sh", "/usr/bin/" ]
-RUN chmod a+x /usr/bin/start.sh
+# Update system and install Kerberos/LDAP packages
+RUN microdnf update -y && \
+    microdnf install -y krb5-server krb5-server-ldapsync krb5-libs krb5-workstation openldap-clients cyrus-sasl-gssapi && \
+    microdnf clean all
 
-VOLUME [ "/var/lib/kerberos/krb5kdc" ]
+# Copy and set up start script
+COPY start.sh /usr/bin/
+RUN chmod +x /usr/bin/start.sh
 
-EXPOSE 88 749
+# Expose Kerberos ports
+EXPOSE 88/tcp 88/udp 749/tcp
 
-HEALTHCHECK CMD [ "/usr/bin/start.sh","healthcheck" ]
+# Persistent volume for Kerberos data
+VOLUME /var/kerberos/krb5kdc
 
-CMD [ "/usr/bin/start.sh" ]
+# Entry point to run the script
+ENTRYPOINT ["/usr/bin/start.sh"]
