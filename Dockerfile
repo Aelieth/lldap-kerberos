@@ -5,7 +5,7 @@ LABEL description="Custom Kerberos container for LLDAP and Keycloak integration"
 
 # Update system and install Kerberos/LDAP packages
 RUN microdnf update -y && \
-    microdnf install -y krb5-server krb5-server-ldapsync krb5-libs krb5-workstation openldap-clients cyrus-sasl-gssapi && \
+    microdnf install -y krb5-server krb5-libs krb5-workstation krb5-server-ldap openldap-clients cyrus-sasl-gssapi && \
     microdnf clean all
 
 # Copy and set up start script
