@@ -101,7 +101,6 @@ Secrets can also be provided via _FILE variants (e.g., MASTER_PASS_FILE=/run/sec
 
 - Set LDAP_HOST (and optionally LDAP_BACKEND=true in future versions).
 - Principals stored in LLDAP subtree (group style).
-- Works best with OpenLDAP; LLDAP has schema limitations.
 
 ## First Run / Bootstrap
 
@@ -116,11 +115,3 @@ All configuration is saved to the persistent volume.
 ## Contributing & Development
 
 This repository is under active development. Contributions, issues, and feature requests are welcome!
-
-Git commands reminder:
-
-- Stage changes: git add <file>
-- Commit: git commit -m "Your message"
-- Push: git push origin master
-
-Happy authenticating!
