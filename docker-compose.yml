@@ -1,24 +1,24 @@
 services:
   lldap:
     build:
-      context: ../lldap  # Your forked LLDAP repo
-      dockerfile: Dockerfile  # Custom one (create next)
+      context: ../lldap
+      dockerfile: Dockerfile
     container_name: lldap-custom
     ports:
       - "3890:3890"
       - "17170:17170"
     environment:
-      - LLDAP_JWT_SECRET=your-strong-jwt-secret123!  # CHANGE STRONG RANDOM
-      - LLDAP_KEY_SEED=your-strong-server-seed-456!  # CHANGE STRONG RANDOM
+      - LLDAP_JWT_SECRET=your-strong-jwt-secret123!  # CHANGE STRONG
+      - LLDAP_KEY_SEED=your-strong-server-seed-456!  # CHANGE STRONG
       - LLDAP_LDAP_BASE_DN=dc=testlab,dc=com
       - LLDAP_VERBOSE=true
       - LLDAP_LDAP_USER_DN=admin
-      - LLDAP_LDAP_USER_PASS=adminpassword123!  # CHANGE IN UI AFTER FIRST RUN
+      - LLDAP_LDAP_USER_PASS=adminpassword123!  # CHANGE IN UI
       - LLDAP_PASSWORD_CHANGE_HOOK=docker exec kerberos-test /usr/bin/sync-kerberos-principal.sh
-      - ENCODE_KEY=your-super-secret-shared-key-123!  # SAME IN KERBEROS (strong random!)
+      - ENCODE_KEY=your-super-secret-shared-key-123!  # SAME IN KERBEROS
     volumes:
       - lldap-data:/data
-      - /var/run/docker.sock:/var/run/docker.sock  # For hook exec (home-lab ok)
+      - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:17170/health || exit 1"]
       interval: 30s
@@ -39,17 +39,17 @@ services:
       - LDAP_HOST=lldap-custom
       - LDAP_PORT=3890
       - LDAP_SCHEME=ldap
-      - REALM_NAME=TESTLAB.COM  # Your realm (uppercase, change if needed)
+      - REALM_NAME=TESTLAB.COM
       - BASE_DN=dc=testlab,dc=com
       - KDC_DN=uid=krbkdc,ou=people,dc=testlab,dc=com
       - ADMIN_DN=uid=krbadm,ou=people,dc=testlab,dc=com
       - CONTAINER_DN=cn=kerberos,ou=groups,dc=testlab,dc=com
       - DM_DN=uid=admin,ou=people,dc=testlab,dc=com
-      - DM_PASS=adminpassword123!  # Match LLDAP (update after UI change)
+      - DM_PASS=adminpassword123!
       - MASTER_PASS=your-strong-master-pass!
       - ADMIN_PASS=your-strong-admin-pass!
       - KDC_PASS=your-strong-kdc-pass!
-      - ENCODE_KEY=your-super-secret-shared-key-123!  # SAME AS LLDAP!
+      - ENCODE_KEY=your-super-secret-shared-key-123!  # SAME AS LLDAP
     volumes:
       - kerberos-data:/var/kerberos/krb5kdc
     healthcheck:
