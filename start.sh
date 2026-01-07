@@ -127,43 +127,77 @@ EOL
 
 # New: LLDAP schema setup using bundled lldap-cli (optional for non-LLDAP)
 setup_lldap_schema() {
-    echo "Setting up LLDAP custom attributes for Kerberos + POSIX compatibility..."
+    echo "Extending LLDAP schema for POSIX/SSSD compatibility..."
 
-    sleep 10  # Wait for LLDAP UI to fully boot (fixes timing race)
+    # Wait for LLDAP UI to be ready
+    local max_retries=30
+    local retry=0
+    until curl -s "http://${LDAP_HOST}:${LLDAP_UI_PORT}/auth/simple/login" > /dev/null; do
+        ((retry++))
+        if [ $retry -ge $max_retries ]; then
+            echo "WARNING: Could not reach LLDAP UI after $max_retries attempts. Skipping schema extension."
+            return 1
+        fi
+        sleep 5
+    done
 
-    export LLDAP_HTTPURL=http://${LDAP_HOST}:${LLDAP_UI_PORT}  # Internal service name for container-to-container
-    export LLDAP_USERNAME=$(echo "${DM_DN}" | sed -n 's/^uid=\([^,]*\),.*/\1/p')  # Extract uid safely
+    export LLDAP_HTTPURL="http://${LDAP_HOST}:${LLDAP_UI_PORT}"
+    export LLDAP_USERNAME=$(echo "${DM_DN}" | sed -n 's/^uid=\([^,]*\),.*/\1/p')
     export LLDAP_PASSWORD="${DM_PASS}"
 
-    # Helper to add if missing
-    add_attr_if_missing() {
+    # Helper to add user attribute if missing
+    add_user_attr_if_missing() {
         local name=$1
         local type=$2
-        local flags=$3  # e.g., "-l -v -e"
+        local flags=${3:-"-v -e"}  # default visible + editable, no list
 
         if ! /usr/bin/lldap-cli schema attribute user list | grep -q "^${name} "; then
-            echo "  - Adding custom attribute: $name ($type $flags)"
+            echo "  - Adding user attribute: $name ($type $flags)"
             /usr/bin/lldap-cli schema attribute user add "$name" "$type" $flags
-            if [ $? -ne 0 ]; then
-                echo "WARNING: Failed adding $name. Continuing—manual UI fix needed."
-            fi
+            [ $? -eq 0 ] && echo "    Success" || echo "    WARNING: Failed to add $name"
         else
-            echo "  - Attribute $name already exists."
+            echo "  - User attribute $name already exists"
         fi
     }
 
-    # Kerberos attributes (optional for hybrid—principals local)
-    add_attr_if_missing krbPrincipalName string "-l -v -e"
-    add_attr_if_missing krbPrincipalKey string "-v -e"
-    add_attr_if_missing krbLastPwdChange date_time "-v -e"
-    add_attr_if_missing krbMaxTicketLife integer "-v -e"
-    add_attr_if_missing krbTicketFlags integer "-v -e"
+    # Helper for group attributes
+    add_group_attr_if_missing() {
+        local name=$1
+        local type=$2
+        local flags=${3:-"-v -e"}
 
-    # POSIX attributes for SSSD/KDE/GNOME
-    add_attr_if_missing uidNumber integer "-v -e"
-    add_attr_if_missing gidNumber integer "-v -e"
-    add_attr_if_missing homeDirectory string "-v -e"
-    add_attr_if_missing loginshell string "-v -e"
+        if ! /usr/bin/lldap-cli schema attribute group list | grep -q "^${name} "; then
+            echo "  - Adding group attribute: $name ($type $flags)"
+            /usr/bin/lldap-cli schema attribute group add "$name" "$type" $flags
+            [ $? -eq 0 ] && echo "    Success" || echo "    WARNING: Failed to add $name"
+        else
+            echo "  - Group attribute $name already exists"
+        fi
+    }
+
+    # POSIX attributes for SSSD
+    add_user_attr_if_missing uidNumber INTEGER
+    add_user_attr_if_missing gidNumber INTEGER
+    add_user_attr_if_missing unixHomeDirectory STRING
+    add_user_attr_if_missing loginShell STRING "-v -e"  # common name: unixHomeDirectory
+
+    add_group_attr_if_missing gidNumber INTEGER
+
+    # Optional: posixAccount / posixGroup object classes (helps default SSSD filters)
+    if ! /usr/bin/lldap-cli schema objectclass user list | grep -q "^posixAccount$"; then
+        echo "  - Adding objectClass posixAccount to users"
+        /usr/bin/lldap-cli schema objectclass user add posixAccount || echo "    WARNING: Failed"
+    fi
+    if ! /usr/bin/lldap-cli schema objectclass group list | grep -q "^posixGroup$"; then
+        echo "  - Adding objectClass posixGroup to groups"
+        /usr/bin/lldap-cli schema objectclass group add posixGroup || echo "    WARNING: Failed"
+    fi
+
+    # Experimental Kerberos attributes (only if full LDAP backend requested)
+    if [ "$LDAP_BACKEND" == "true" ]; then
+        add_user_attr_if_missing krbPrincipalName STRING "-l -v -e"
+        # Add others if desired...
+    fi
 }
 
 # Set defaults and warnings for all vars (adaptive, no forced structures)

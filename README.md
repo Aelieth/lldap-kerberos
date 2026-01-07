@@ -4,7 +4,7 @@ A modern, lightweight Kerberos KDC container designed to work seamlessly with LL
 
 This project extends the original work from RobinR1/containers-kerberos with:
 
-- AlmaLinux 9-minimal base for excellent multi-arch support (x86_64 and ARM64, including ZimaOS on ZimaBlade).
+- AlmaLinux 9-minimal base for excellent multi-arch support (x86_64 and ARM64).
 - Hybrid operation mode: Local Kerberos database for principals (fast and reliable) with automatic extension of LLDAP's schema for POSIX attributes used by SSSD (KDE/GNOME desktop SSO).
 - Automated schema extension using the community lldap-cli tool.
 - Full environment-variable configurability for easy deployment in test or home-lab environments.
